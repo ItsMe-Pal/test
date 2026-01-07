@@ -2,14 +2,30 @@ const { chromium } = require('playwright');
 const express = require('express');
 
 const screenshot = async (url) => {
-    const browser = await chromium.launch({ args: ['--single-process'] });
+    const browser = await chromium.launch({
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--single-process'
+        ]
+    });
+
     const page = await browser.newPage();
-    await page.goto(url);
-    const img = await page.screenshot();
+
+    await page.goto(url, {
+        waitUntil: 'networkidle',
+        timeout: 30000
+    });
+
+    const img = await page.screenshot({ type: 'png' });
+
     await browser.close();
 
     return img;
 };
+
 
 const app = express();
 
