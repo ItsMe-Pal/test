@@ -1,37 +1,47 @@
 const { chromium } = require('playwright');
 const express = require('express');
 
-const app = express();
-
-/**
- * بياخد Screenshot لموقع (Headless)
- */
-async function screenshot(url) {
+const screenshot = async (url) => {
     const browser = await chromium.launch({
-        headless: true   // 👈 المتصفح يشتغل من غير ما يفتح شاشة
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--single-process'
+        ]
     });
 
-    const page = await browser.newPage();   // صفحة جديدة
-    await page.goto(url);                   // نروح للرابط
-    const image = await page.screenshot();  // نلقط الصورة
-    await browser.close();                  // نقفل المتصفح
+    const page = await browser.newPage();
 
-    return image;
-}
+    await page.goto(url, {
+        waitUntil: 'networkidle',
+        timeout: 30000
+    });
+
+    const img = await page.screenshot({ type: 'png' });
+
+    await browser.close();
+
+    return img;
+};
+
+
+const app = express();
 
 app.get('/', async (req, res) => {
     const url = req.query.url;
 
-    if (!url) {
-        return res.send('اكتب ?url=https://example.com');
+    if (url) {
+        const img = await screenshot(url);
+        res.set('Content-Type', 'image/png');
+        res.send(img);
+    } else {
+        res.send('Please provide a ?url=https://example.com/ parameter');
     }
-
-    const image = await screenshot(url);
-
-    res.set('Content-Type', 'image/png');
-    res.send(image);
 });
 
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
+const port = 3000;
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });
